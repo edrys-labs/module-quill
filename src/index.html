@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+
+    <script src="https://edrys-labs.github.io/test/module/edrys.js"></script>
+    <style>
+      /* Essential for full height */
+      html,
+      body {
+        height: 100vh;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+
+      /* Container styles */
+      #editor-container {
+        height: calc(100vh - 2.9rem); /* Account for margins */
+        margin: 0.1rem;
+        border: 0px;
+      }
+    </style>
+    <link
+      href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="editor-container"></div>
+    <script type="module">
+      import Quill from 'quill'
+      import { QuillBinding } from 'y-quill'
+
+      Edrys.onReady(() => {
+        // Initialize Quill editor
+        const editor = new Quill('#editor-container', {
+          modules: {
+            toolbar: [
+              [{ header: [1, 2, false] }],
+              ['bold', 'italic', 'underline'],
+              ['image', 'code-block'],
+            ],
+          },
+          theme: 'snow',
+        })
+
+        // Create a Y.Text type for the editor
+        const ytext = Edrys.getState('quill', 'Text')
+
+        // Bind Quill to Y.Text type
+        const binding = new QuillBinding(ytext, editor)
+      })
+    </script>
+  </body>
+</html>
