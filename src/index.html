@@ -3,11 +3,13 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Document</title>
-
+    <title>Collaborative Editor</title>
     <script src="https://edrys-labs.github.io/test/module/edrys.js"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css"
+      rel="stylesheet"
+    />
     <style>
-      /* Essential for full height */
       html,
       body {
         height: 100vh;
@@ -15,44 +17,152 @@
         padding: 0;
         overflow: hidden;
       }
-
-      /* Container styles */
       #editor-container {
-        height: calc(100vh - 2.9rem); /* Account for margins */
+        height: calc(100vh - 2.9rem);
         margin: 0.1rem;
         border: 0px;
+        position: relative;
+      }
+      .ql-cursor.ql-hidden {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+      }
+      .ql-cursor-flag {
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        background: var(--cursor-color);
+        position: absolute;
+        z-index: 1000;
+      }
+      .ql-cursor-selection {
+        background: rgba(var(--cursor-rgb), 0.2) !important;
+        border: 2px solid var(--cursor-color) !important;
+      }
+      .ql-cursor-caret {
+        width: 2px !important;
+        display: block !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        background: var(--cursor-color);
       }
     </style>
-    <link
-      href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css"
-      rel="stylesheet"
-    />
   </head>
   <body>
     <div id="editor-container"></div>
     <script type="module">
       import Quill from 'quill'
+      import QuillCursors from 'quill-cursors'
       import { QuillBinding } from 'y-quill'
 
-      Edrys.onReady(() => {
-        // Initialize Quill editor
-        const editor = new Quill('#editor-container', {
-          modules: {
-            toolbar: [
-              [{ header: [1, 2, false] }],
-              ['bold', 'italic', 'underline'],
-              ['image', 'code-block'],
-            ],
-          },
-          theme: 'snow',
-        })
+      async function initializeEditor() {
+        try {
+          // Wait for Edrys to be ready
+          await new Promise((resolve) => Edrys.onReady(resolve))
 
-        // Create a Y.Text type for the editor
-        const ytext = Edrys.getState('quill', 'Text')
+          // Register QuillCursors module
+          Quill.register('modules/cursors', QuillCursors)
 
-        // Bind Quill to Y.Text type
-        const binding = new QuillBinding(ytext, editor)
-      })
+          // Initialize the shared text first
+          const ytext = Edrys.getState('quill', 'Text')
+          const awareness = Edrys.getState('wwww', 'Awareness')
+
+          // Wait a moment for Y.js to initialize
+          await new Promise((resolve) => setTimeout(resolve, 100))
+
+          // Initialize Quill after Y.js is ready
+          const editor = new Quill('#editor-container', {
+            modules: {
+              cursors: {
+                transformOnTextChange: true,
+                selectionChangeSource: null,
+                hideDelayMs: 0,
+                hideSpeedMs: 0,
+              },
+              toolbar: [
+                [{ header: [1, 2, false] }],
+                ['bold', 'italic', 'underline'],
+                ['code-block'],
+              ],
+            },
+            theme: 'snow',
+            placeholder: 'Start collaborating...',
+          })
+
+          const cursors = editor.getModule('cursors')
+
+          // Generate stable user information
+          const userId = Math.floor(Math.random() * 10000).toString()
+          const userColor = `#${Math.floor(Math.random() * 16777215).toString(
+            16
+          )}`
+          const userName = `User-${userId}`
+
+          // Set up awareness after editor is initialized
+          awareness.setLocalStateField('user', {
+            name: userName,
+            color: userColor,
+            id: userId,
+          })
+
+          // Create binding after everything else is set up
+          const binding = new QuillBinding(ytext, editor)
+
+          // Handle selection changes after binding is created
+          editor.on('selection-change', (range) => {
+            if (range) {
+              awareness.setLocalStateField('cursor', {
+                index: range.index,
+                length: range.length,
+              })
+            }
+          })
+
+          // Handle awareness changes
+          awareness.on('change', () => {
+            const states = Array.from(awareness.getStates().entries())
+            states.forEach(([clientId, state]) => {
+              if (
+                state.user &&
+                state.cursor &&
+                clientId !== awareness.clientID
+              ) {
+                try {
+                  // Ensure cursor exists
+                  if (!cursors.cursors[clientId]) {
+                    cursors.createCursor(
+                      clientId.toString(),
+                      state.user.name,
+                      state.user.color
+                    )
+                  }
+
+                  // Move cursor safely
+                  if (state.cursor.index !== undefined) {
+                    cursors.moveCursor(clientId.toString(), {
+                      index: state.cursor.index,
+                      length: state.cursor.length || 0,
+                    })
+                  }
+                } catch (err) {
+                  console.warn('Cursor update error:', err)
+                }
+              }
+            })
+          })
+
+          // Debug logging
+          window.editor = editor
+          window.cursors = cursors
+          window.awareness = awareness
+          window.ytext = ytext
+        } catch (error) {
+          console.error('Editor initialization error:', error)
+        }
+      }
+
+      initializeEditor()
     </script>
   </body>
 </html>
