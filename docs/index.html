@@ -3,7 +3,9 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collaborative Editor</title>
+    <title>Quill Editor</title>
+    <meta name="description" content="A collaborative rich text editor, which can upload multimedia content too.<br/>For more information visit: <a href='https://github.com/edrys-labs/module-quill' target='_blank'>https://github.com/edrys-labs/module-quill</a>">
+
     <script src="https://edrys-labs.github.io/test/module/edrys.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css" rel="stylesheet">
     <style>html, body {
@@ -195,7 +197,7 @@
       this[globalName] = mainExports;
     }
   }
-})({"jZvPP":[function(require,module,exports) {
+})({"81u0S":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
 var _quill = require("quill");
 var _quillDefault = parcelHelpers.interopDefault(_quill);
@@ -209,8 +211,8 @@ async function initializeEditor() {
         // Register QuillCursors module
         (0, _quillDefault.default).register("modules/cursors", (0, _quillCursorsDefault.default));
         // Initialize the shared text first
-        const ytext = Edrys.getState("quill", "Text");
-        const awareness = Edrys.getState("wwww", "Awareness");
+        const ytext = Edrys.getState("quill-text", "Text");
+        const awareness = Edrys.getState("quill-awareness", "Awareness");
         // Wait a moment for Y.js to initialize
         await new Promise((resolve)=>setTimeout(resolve, 100));
         // Initialize Quill after Y.js is ready
@@ -224,21 +226,104 @@ async function initializeEditor() {
                 },
                 toolbar: [
                     [
+                        "bold",
+                        "italic",
+                        "underline",
+                        "strike"
+                    ],
+                    [
+                        "blockquote",
+                        "code-block"
+                    ],
+                    [
+                        "link",
+                        "image",
+                        "video",
+                        "formula"
+                    ],
+                    [
+                        {
+                            header: 1
+                        },
+                        {
+                            header: 2
+                        }
+                    ],
+                    [
+                        {
+                            list: "ordered"
+                        },
+                        {
+                            list: "bullet"
+                        },
+                        {
+                            list: "check"
+                        }
+                    ],
+                    [
+                        {
+                            script: "sub"
+                        },
+                        {
+                            script: "super"
+                        }
+                    ],
+                    [
+                        {
+                            indent: "-1"
+                        },
+                        {
+                            indent: "+1"
+                        }
+                    ],
+                    [
+                        {
+                            direction: "rtl"
+                        }
+                    ],
+                    [
+                        {
+                            size: [
+                                "small",
+                                false,
+                                "large",
+                                "huge"
+                            ]
+                        }
+                    ],
+                    [
                         {
                             header: [
                                 1,
                                 2,
+                                3,
+                                4,
+                                5,
+                                6,
                                 false
                             ]
                         }
                     ],
                     [
-                        "bold",
-                        "italic",
-                        "underline"
+                        {
+                            color: []
+                        },
+                        {
+                            background: []
+                        }
                     ],
                     [
-                        "code-block"
+                        {
+                            font: []
+                        }
+                    ],
+                    [
+                        {
+                            align: []
+                        }
+                    ],
+                    [
+                        "clean"
                     ]
                 ]
             },
@@ -32721,7 +32806,7 @@ const iteratorMap = (iterator, fmap)=>createIterator(()=>{
         };
     });
 
-},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["jZvPP"], "jZvPP", "parcelRequireb73e")
+},{"@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3"}]},["81u0S"], "81u0S", "parcelRequireb73e")
 
 </script>
   </body>

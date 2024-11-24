@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Collaborative Editor</title>
+    <title>Quill Editor</title>
+    <meta
+      name="description"
+      content="A collaborative rich text editor, which can upload multimedia content too.<br/>For more information visit: <a href='https://github.com/edrys-labs/module-quill' target='_blank'>https://github.com/edrys-labs/module-quill</a>"
+    />
+
     <script src="https://edrys-labs.github.io/test/module/edrys.js"></script>
     <link
       href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css"
@@ -65,8 +70,8 @@
           Quill.register('modules/cursors', QuillCursors)
 
           // Initialize the shared text first
-          const ytext = Edrys.getState('quill', 'Text')
-          const awareness = Edrys.getState('wwww', 'Awareness')
+          const ytext = Edrys.getState('quill-text', 'Text')
+          const awareness = Edrys.getState('quill-awareness', 'Awareness')
 
           // Wait a moment for Y.js to initialize
           await new Promise((resolve) => setTimeout(resolve, 100))
@@ -81,9 +86,24 @@
                 hideSpeedMs: 0,
               },
               toolbar: [
-                [{ header: [1, 2, false] }],
-                ['bold', 'italic', 'underline'],
-                ['code-block'],
+                ['bold', 'italic', 'underline', 'strike'], // toggled buttons
+                ['blockquote', 'code-block'],
+                ['link', 'image', 'video', 'formula'],
+
+                [{ header: 1 }, { header: 2 }], // custom button values
+                [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+                [{ script: 'sub' }, { script: 'super' }], // superscript/subscript
+                [{ indent: '-1' }, { indent: '+1' }], // outdent/indent
+                [{ direction: 'rtl' }], // text direction
+
+                [{ size: ['small', false, 'large', 'huge'] }], // custom dropdown
+                [{ header: [1, 2, 3, 4, 5, 6, false] }],
+
+                [{ color: [] }, { background: [] }], // dropdown with defaults from theme
+                [{ font: [] }],
+                [{ align: [] }],
+
+                ['clean'], // remove formatting button
               ],
             },
             theme: 'snow',
