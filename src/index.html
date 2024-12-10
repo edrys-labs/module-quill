@@ -71,7 +71,7 @@
 
           // Initialize the shared text first
           const ytext = Edrys.getState('quill-text', 'Text')
-          const awareness = Edrys.getState('quill-awareness', 'Awareness')
+          //const awareness = Edrys.getState('quill-awareness', 'Awareness')
 
           // Wait a moment for Y.js to initialize
           await new Promise((resolve) => setTimeout(resolve, 100))
@@ -120,27 +120,27 @@
           const userName = `User-${userId}`
 
           // Set up awareness after editor is initialized
-          awareness.setLocalStateField('user', {
+          /*  awareness.setLocalStateField('user', {
             name: userName,
             color: userColor,
             id: userId,
-          })
+          })  */
 
           // Create binding after everything else is set up
           const binding = new QuillBinding(ytext, editor)
 
           // Handle selection changes after binding is created
-          editor.on('selection-change', (range) => {
+          /*  editor.on('selection-change', (range) => {
             if (range) {
               awareness.setLocalStateField('cursor', {
                 index: range.index,
                 length: range.length,
               })
             }
-          })
+          })  */
 
           // Handle awareness changes
-          awareness.on('change', () => {
+          /*  awareness.on('change', () => {
             const states = Array.from(awareness.getStates().entries())
             states.forEach(([clientId, state]) => {
               if (
@@ -170,12 +170,12 @@
                 }
               }
             })
-          })
+          })  */
 
           // Debug logging
           window.editor = editor
           window.cursors = cursors
-          window.awareness = awareness
+          //window.awareness = awareness
           window.ytext = ytext
         } catch (error) {
           console.error('Editor initialization error:', error)
