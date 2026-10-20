@@ -377,6 +377,9 @@ async function initializeEditor() {
   }, 10_000)
 
   try {
+    // Say so plainly instead of the browser's "Edrys is not defined" / "Can't find variable"
+    if (!window.Edrys) throw new Error('edrys.js could not be loaded')
+
     // Wait for Edrys to be ready
     await new Promise((resolve) => Edrys.onReady(resolve))
     clearTimeout(slow)
