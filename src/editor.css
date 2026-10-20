@@ -1,0 +1,203 @@
+/* Layout: status, toolbar and editor fill the frame; the editor takes
+   whatever the (wrapping) toolbar leaves and scrolls inside itself. */
+html,
+body {
+  height: 100%;
+  margin: 0;
+}
+body {
+  max-width: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.ql-toolbar {
+  flex: none;
+}
+#editor-container {
+  flex: 1;
+  min-height: 0;
+}
+
+#status {
+  margin: 1rem;
+  opacity: 0.7;
+}
+#status.error,
+#status.notice {
+  opacity: 1;
+  padding-left: 0.75rem;
+  border-left: 4px solid #b8384a;
+}
+
+/* Dark mode matches module-monaco-editor (vs-dark) instead of water.css's
+   navy; everything below reads these tokens. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-body: #1e1e1e;
+    --background: #2d2d2d;
+    --background-alt: #252526;
+    --border: #333;
+    --text-main: #d4d4d4;
+    --text-bright: #fff;
+    --text-muted: #888;
+    --form-text: #ccc;
+    --button-base: #3a3a3a;
+    --button-hover: #4a4a4a;
+    --scrollbar-thumb: #4a4a4a;
+    --scrollbar-thumb-hover: #5a5a5a;
+  }
+}
+
+/* Quill's snow theme hard-codes light colours: map them to water.css
+   tokens, which follow the light/dark preference. */
+.ql-toolbar.ql-snow {
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  font-family: inherit;
+  color: var(--text-main);
+  /* a shade off the editor, as module-monaco-editor's bar in light mode */
+  background: var(--background-alt);
+}
+/* room for a peer's name flag above the first line (it sits above its caret) */
+.ql-editor {
+  padding-top: 1.5rem;
+}
+.ql-container.ql-snow {
+  border: 0;
+}
+.ql-snow.ql-toolbar button {
+  margin: 0; /* water.css spaces buttons apart */
+}
+.ql-snow.ql-toolbar button:active {
+  transform: none;
+}
+.ql-snow.ql-toolbar button:focus:not(:focus-visible) {
+  box-shadow: none;
+}
+.ql-snow .ql-stroke,
+.ql-snow .ql-stroke-miter {
+  stroke: currentColor;
+}
+.ql-snow .ql-fill,
+.ql-snow .ql-stroke.ql-fill {
+  fill: currentColor;
+}
+.ql-snow .ql-picker {
+  color: inherit;
+}
+.ql-snow.ql-toolbar
+  :is(
+    button:hover,
+    button:focus,
+    button.ql-active,
+    .ql-picker-label:hover,
+    .ql-picker-label.ql-active,
+    .ql-picker-item:hover,
+    .ql-picker-item.ql-selected
+  ) {
+  color: var(--links);
+}
+.ql-snow.ql-toolbar
+  :is(
+    button:hover,
+    button:focus,
+    button.ql-active,
+    .ql-picker-label:hover,
+    .ql-picker-label.ql-active,
+    .ql-picker-item:hover,
+    .ql-picker-item.ql-selected
+  )
+  :is(.ql-stroke, .ql-stroke-miter) {
+  stroke: var(--links);
+}
+.ql-snow.ql-toolbar
+  :is(
+    button:hover,
+    button:focus,
+    button.ql-active,
+    .ql-picker-label:hover,
+    .ql-picker-label.ql-active,
+    .ql-picker-item:hover,
+    .ql-picker-item.ql-selected
+  )
+  .ql-fill {
+  fill: var(--links);
+}
+.ql-snow .ql-picker.ql-expanded .ql-picker-label {
+  color: var(--text-muted);
+}
+.ql-snow .ql-picker-options {
+  background-color: var(--background-body);
+}
+.ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-label,
+.ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-options {
+  border-color: var(--border);
+}
+.ql-snow .ql-tooltip {
+  background-color: var(--background-body);
+  border-color: var(--border);
+  box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+  color: var(--text-main);
+}
+.ql-snow .ql-tooltip input[type='text'] {
+  border-color: var(--border);
+}
+.ql-snow .ql-tooltip a.ql-action::after {
+  border-color: var(--border);
+}
+.ql-snow a {
+  color: var(--links);
+}
+.ql-editor.ql-blank::before,
+.ql-editor li[data-list] > .ql-ui {
+  color: var(--text-muted);
+}
+.ql-snow .ql-editor code {
+  background-color: var(--background);
+}
+.ql-snow .ql-editor blockquote {
+  border-left-color: var(--border);
+  font-style: normal; /* water.css italicises blockquotes, Quill does not */
+}
+.ql-editor td {
+  border-color: var(--border);
+}
+
+
+/* Keep the peer's name next to its caret, as module-monaco-editor does
+   (quill-cursors only shows it for a moment after a move, or on hover) */
+.ql-cursor .ql-cursor-flag {
+  opacity: 1 !important;
+  visibility: visible !important;
+  font-size: small;
+}
+
+/* Sync badge at the end of the toolbar */
+.ql-toolbar.ql-snow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.ql-toolbar.ql-snow[hidden] {
+  display: none;
+}
+.ql-toolbar.ql-snow .ql-formats.sync {
+  margin-left: auto;
+  margin-right: 0;
+}
+.badge {
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font-size: small;
+  line-height: 1.4;
+  color: #fff;
+  white-space: nowrap;
+}
+.badge.on {
+  background: #1f7a45;
+}
+.badge.wait {
+  background: #6b6b6b;
+}
