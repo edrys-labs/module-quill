@@ -8,6 +8,18 @@
       name="description"
       content="A collaborative rich text editor, which can upload multimedia content too.<br/>For more information visit: <a href='https://github.com/edrys-labs/module-quill' target='_blank'>https://github.com/edrys-labs/module-quill</a>"
     />
+    <meta name="show-in" content="*" />
+    <meta
+      name="module-config"
+      content="{
+        'config': {
+          'editorId': {
+            'type': 'text',
+            'hint': 'Give each Quill module in a room its own id to keep their documents apart. Leave empty for the shared default document.'
+          }
+        }
+      }"
+    />
 
     <script src="https://edrys-labs.github.io/module/edrys.js"></script>
     <link
@@ -60,23 +72,48 @@
       import Quill from 'quill'
       import QuillCursors from 'quill-cursors'
       import { QuillBinding } from 'y-quill'
+      import katex from 'katex'
+      import 'katex/dist/katex.min.css'
+
+      // Quill's formula format looks KaTeX up on window
+      window.katex = katex
+
+      const DEFAULTS = { editorId: '' }
+
+      // Config fields arrive JSON-parsed, or as a string/undefined when unset or invalid
+      const asObject = (c) => (c && typeof c === 'object' ? c : {})
+
+      function readConfig() {
+        const merged = { ...DEFAULTS }
+        const sources = [
+          Edrys.module.config,
+          Edrys.module[Edrys.role.toLowerCase() + 'Config'],
+        ]
+        for (const source of sources) {
+          for (const [key, value] of Object.entries(asObject(source))) {
+            // the settings form saves empty fields as '': keep the default then
+            if (value !== '' && value !== undefined) merged[key] = value
+          }
+        }
+        return merged
+      }
+
+      // An empty editorId keeps the original key, so existing documents stay where they are
+      const stateKey = (cfg) =>
+        cfg.editorId ? `quill-text-${cfg.editorId}` : 'quill-text'
 
       async function initializeEditor() {
         try {
           // Wait for Edrys to be ready
           await new Promise((resolve) => Edrys.onReady(resolve))
 
+          const cfg = readConfig()
+          const STATE_KEY = stateKey(cfg)
+
           // Register QuillCursors module
           Quill.register('modules/cursors', QuillCursors)
-
-          // Initialize the shared text first
-          const ytext = Edrys.getState('quill-text', 'Text')
           //const awareness = Edrys.getState('quill-awareness', 'Awareness')
 
-          // Wait a moment for Y.js to initialize
-          await new Promise((resolve) => setTimeout(resolve, 100))
-
-          // Initialize Quill after Y.js is ready
           const editor = new Quill('#editor-container', {
             modules: {
               cursors: {
@@ -126,8 +163,22 @@
             id: userId,
           })  */
 
-          // Create binding after everything else is set up
-          const binding = new QuillBinding(ytext, editor)
+          // getState creates the Y.Text when the key is missing. Peers that do this
+          // at the same moment each create one and Yjs keeps only one, so rebind
+          // whenever the key's value is replaced, or this peer edits a dropped text.
+          let ytext = Edrys.getState(STATE_KEY, 'Text')
+          let binding = new QuillBinding(ytext, editor)
+          window.ytext = ytext
+
+          Edrys.getState().observe((event) => {
+            if (!event.keysChanged.has(STATE_KEY)) return
+            const current = Edrys.getState(STATE_KEY, 'Text')
+            if (current === ytext) return
+            binding.destroy()
+            ytext = current
+            binding = new QuillBinding(ytext, editor)
+            window.ytext = ytext
+          })
 
           // Handle selection changes after binding is created
           /*  editor.on('selection-change', (range) => {
@@ -172,11 +223,10 @@
             })
           })  */
 
-          // Debug logging
+          // Debug logging; window.editor and window.ytext are used by the e2e tests (edrys-module-tests)
           window.editor = editor
           window.cursors = cursors
           //window.awareness = awareness
-          window.ytext = ytext
         } catch (error) {
           console.error('Editor initialization error:', error)
         }
