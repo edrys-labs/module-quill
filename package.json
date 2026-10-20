@@ -1,14 +1,17 @@
 {
   "name": "module-quill",
-  "version": "1.0.0",
+  "version": "2.0.0",
+  "description": "Collaborative rich-text editor (Quill) module for Edrys-Lite",
+  "author": "edrys-labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edrys-labs/module-quill"
+  },
   "scripts": {
     "build": "npx parcel build src/index.html --dist-dir docs --public-url ./",
-    "watch": "npx parcel serve src/index.html --port 3000 --open",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "watch": "npx parcel serve src/index.html --port 3000 --open"
   },
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "katex": "^0.19.0",
     "quill": "^2.0.2",
@@ -16,9 +19,7 @@
     "y-quill": "^1.0.0"
   },
   "devDependencies": {
-    "buffer": "^6.0.3",
-    "parcel": "^2.12.0",
-    "process": "^0.11.10"
+    "parcel": "^2.12.0"
   },
   "alias": {
     "yjs": "./src/yjs-global.js"

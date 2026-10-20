@@ -53,11 +53,9 @@
       rel="stylesheet"
       href="https://edrys-labs.github.io/module/vendor/water.min.css"
     />
-    <link
-      href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css"
-      rel="stylesheet"
-    />
-    <!-- linked here, not imported in the inline script: Parcel drops CSS imported there -->
+    <!-- from the installed packages, so CSS and JS versions match. Linked here, not
+         imported in the inline script: Parcel drops CSS imported there -->
+    <link rel="stylesheet" href="../node_modules/quill/dist/quill.snow.css" />
     <link rel="stylesheet" href="../node_modules/katex/dist/katex.min.css" />
     <style>
       /* Layout: status, toolbar and editor fill the frame; the editor takes
@@ -361,7 +359,9 @@
         const Video = Quill.import('formats/video')
         class SafeVideo extends Video {
           static sanitize(url) {
-            return VIDEO_URL.test(url) ? url : 'about:blank'
+            // Quill keeps the scheme of a pasted watch link: upgrade http players to https
+            const secure = String(url).replace(/^http:\/\//, 'https://')
+            return VIDEO_URL.test(secure) ? secure : 'about:blank'
           }
           static create(value) {
             const node = super.create(value)
