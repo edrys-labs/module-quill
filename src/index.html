@@ -17,6 +17,19 @@
             'type': 'text',
             'hint': 'Give each Quill module in a room its own id to keep their documents apart. Leave empty for the shared default document.'
           },
+          'synchronize': {
+            'type': 'boolean',
+            'hint': 'Share one document across all peers in the room, with live cursors; otherwise each person edits their own copy, kept in their browser'
+          },
+          'placeholder': {
+            'type': 'text',
+            'hint': 'Shown while the document is empty'
+          },
+          'toolbar': {
+            'type': 'radio-button',
+            'options': ['full', 'basic'],
+            'hint': 'basic: text styles, headings, lists, links, images and formulas'
+          },
           'maxImageKB': {
             'type': 'number',
             'hint': 'Largest image (in KB) that can be added; bigger ones are scaled down first. Images are stored in the shared document, so keep this small. Default: 500.'
@@ -24,6 +37,12 @@
           'blockRemoteImages': {
             'type': 'boolean',
             'hint': 'Only show images uploaded into the document, not images linked from other websites (which can see who views them).'
+          }
+        },
+        'studentConfig': {
+          'readOnly': {
+            'type': 'boolean',
+            'hint': 'Students can read the shared document but not edit it (use with synchronize)'
           }
         }
       }"
@@ -202,29 +221,33 @@
         border-color: var(--border);
       }
 
-      .ql-cursor.ql-hidden {
-        display: block !important;
-        opacity: 1 !important;
-        visibility: visible !important;
+
+      /* Sync badge at the end of the toolbar */
+      .ql-toolbar.ql-snow {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
       }
-      .ql-cursor-flag {
-        display: block !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        background: var(--cursor-color);
-        position: absolute;
-        z-index: 1000;
+      .ql-toolbar.ql-snow[hidden] {
+        display: none;
       }
-      .ql-cursor-selection {
-        background: rgba(var(--cursor-rgb), 0.2) !important;
-        border: 2px solid var(--cursor-color) !important;
+      .ql-toolbar.ql-snow .ql-formats.sync {
+        margin-left: auto;
+        margin-right: 0;
       }
-      .ql-cursor-caret {
-        width: 2px !important;
-        display: block !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        background: var(--cursor-color);
+      .badge {
+        border-radius: 999px;
+        padding: 0.1rem 0.6rem;
+        font-size: small;
+        line-height: 1.4;
+        color: #fff;
+        white-space: nowrap;
+      }
+      .badge.on {
+        background: #1f7a45;
+      }
+      .badge.wait {
+        background: #6b6b6b;
       }
     </style>
   </head>
@@ -240,8 +263,13 @@
       // Quill's formula format looks KaTeX up on window
       window.katex = katex
 
+      // Every boolean is opt-in: the settings form saves unticked boxes as false
       const DEFAULTS = {
         editorId: '',
+        synchronize: false,
+        placeholder: '',
+        toolbar: 'full',
+        readOnly: false,
         maxImageKB: 500,
         blockRemoteImages: false,
       }
@@ -249,6 +277,32 @@
       // Uploaded images are scaled to fit this box (px) unless they are already small enough
       const MAX_IMAGE_SIDE = 1280
       const JPEG_QUALITIES = [0.85, 0.7, 0.5]
+
+      const TOOLBARS = {
+        full: [
+          ['bold', 'italic', 'underline', 'strike'],
+          ['blockquote', 'code-block'],
+          ['link', 'image', 'video', 'formula'],
+          [{ header: 1 }, { header: 2 }],
+          [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+          [{ script: 'sub' }, { script: 'super' }],
+          [{ indent: '-1' }, { indent: '+1' }],
+          [{ direction: 'rtl' }],
+          [{ size: ['small', false, 'large', 'huge'] }],
+          [{ header: [1, 2, 3, 4, 5, 6, false] }],
+          [{ color: [] }, { background: [] }],
+          [{ font: [] }],
+          [{ align: [] }],
+          ['clean'],
+        ],
+        basic: [
+          ['bold', 'italic', 'underline', 'strike'],
+          [{ header: 1 }, { header: 2 }],
+          [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
+          ['link', 'image', 'formula'],
+          ['clean'],
+        ],
+      }
 
       // Videos can only come from these players; everything else is blocked for every peer
       const VIDEO_URL =
@@ -404,6 +458,118 @@
         }
       }
 
+      // Deterministic hue from a string, so a person has the same cursor colour
+      // everywhere (same as module-monaco-editor)
+      function stringToHue(str) {
+        let hash = 0
+        for (let i = 0; i < str.length; i++) {
+          hash = str.charCodeAt(i) + ((hash << 5) - hash)
+        }
+        return Math.abs(hash) % 360
+      }
+
+      // Peer names are raw identities: a base64 ECDSA key with a `_xxxxx` session
+      // suffix, or a plain name for stations. Mirrors edrys's getShortPeerID() so the
+      // cursor label matches the rooms list (same as module-monaco-editor).
+      function shortPeerName(rawName) {
+        const sepIdx = rawName.lastIndexOf('_')
+        const base = sepIdx > 0 ? rawName.slice(0, sepIdx) : rawName
+        if (!/^[A-Za-z0-9+/]{40,}={0,2}$/.test(base)) return base.slice(0, 16)
+        try {
+          const bytes = Uint8Array.from(atob(base), (c) => c.charCodeAt(0))
+          return Array.from(bytes.slice(0, 4))
+            .map((b) => b.toString(16).padStart(2, '0'))
+            .join('')
+        } catch {
+          return base.slice(0, 16)
+        }
+      }
+
+      /**
+       * Live cursors of the others in the room. y-quill draws them with
+       * quill-cursors from each peer's awareness `user` and `cursor` fields.
+       */
+      function joinCursors(key) {
+        try {
+          const awareness = Edrys.getState(`${key}-cursors`, 'Awareness')
+          const name = shortPeerName(Edrys.username || 'anon')
+          awareness.setLocalStateField('user', {
+            name,
+            color: `hsl(${stringToHue(name)}, 70%, 45%)`,
+          })
+          // edrys.js keeps awareness state after the page is gone: drop our cursor
+          window.addEventListener('pagehide', () =>
+            awareness.setLocalStateField('cursor', null)
+          )
+          return awareness
+        } catch (error) {
+          console.warn('Live cursors are not available:', error)
+          return undefined
+        }
+      }
+
+      /** One shared Y.Text for the room, followed when it is replaced. */
+      function bindShared(editor, key, awareness) {
+        // getState creates the Y.Text when the key is missing. Peers that do this
+        // at the same moment each create one and Yjs keeps only one, so rebind
+        // whenever the key's value is replaced, or this peer edits a dropped text.
+        let ytext = Edrys.getState(key, 'Text')
+        let binding = new QuillBinding(ytext, editor, awareness)
+        window.ytext = ytext
+
+        Edrys.getState().observe((event) => {
+          if (!event.keysChanged.has(key)) return
+          const current = Edrys.getState(key, 'Text')
+          if (current === ytext) return
+          binding.destroy()
+          ytext = current
+          binding = new QuillBinding(ytext, editor, awareness)
+          window.ytext = ytext
+        })
+      }
+
+      /** Without synchronize: this person's own copy, kept in their browser (per class and room). */
+      function bindLocal(editor, key) {
+        const storageKey = `${key}-local`
+        try {
+          const saved = Edrys.getItem(storageKey)
+          if (saved) {
+            editor.setContents(JSON.parse(saved), 'silent')
+            editor.history.clear()
+          }
+        } catch (error) {
+          console.warn('Could not restore the local copy:', error)
+        }
+
+        const save = () => {
+          try {
+            Edrys.setItem(storageKey, JSON.stringify(editor.getContents()))
+          } catch (error) {
+            notify(`Could not save your copy in this browser: ${error.message}.`)
+          }
+        }
+        let timer
+        editor.on('text-change', () => {
+          clearTimeout(timer)
+          timer = setTimeout(save, 500)
+        })
+        window.addEventListener('pagehide', save)
+      }
+
+      /** "shared" / "local only" at the end of the toolbar. */
+      function showSyncBadge(editor, sync) {
+        const group = document.createElement('span')
+        group.className = 'ql-formats sync'
+        const badge = document.createElement('span')
+        badge.className = `badge ${sync ? 'on' : 'wait'}`
+        badge.textContent = sync ? 'shared' : 'local only'
+        badge.title = sync
+          ? 'Shared: everyone in this room edits this document'
+          : 'Local only: your own copy, kept in this browser'
+        group.append(badge)
+        editor.getModule('toolbar').container.append(group)
+      }
+
       async function initializeEditor() {
         // onReady only fires inside an Edrys classroom
         const slow = setTimeout(() => {
@@ -418,10 +584,10 @@
 
           const cfg = readConfig()
           const STATE_KEY = stateKey(cfg)
+          const sync = cfg.synchronize === true
+          const readOnly = cfg.readOnly === true
 
-          // Register QuillCursors module
           Quill.register('modules/cursors', QuillCursors)
-          //const awareness = Edrys.getState('quill-awareness', 'Awareness')
           registerSafeVideo()
           registerImageFormat(cfg)
 
@@ -431,117 +597,29 @@
                 mimetypes: ['image/png', 'image/jpeg', 'image/gif', 'image/webp'],
                 handler: imageUploader(cfg),
               },
-              cursors: {
-                transformOnTextChange: true,
-                selectionChangeSource: null,
-                hideDelayMs: 0,
-                hideSpeedMs: 0,
-              },
-              toolbar: [
-                ['bold', 'italic', 'underline', 'strike'], // toggled buttons
-                ['blockquote', 'code-block'],
-                ['link', 'image', 'video', 'formula'],
-
-                [{ header: 1 }, { header: 2 }], // custom button values
-                [{ list: 'ordered' }, { list: 'bullet' }, { list: 'check' }],
-                [{ script: 'sub' }, { script: 'super' }], // superscript/subscript
-                [{ indent: '-1' }, { indent: '+1' }], // outdent/indent
-                [{ direction: 'rtl' }], // text direction
-
-                [{ size: ['small', false, 'large', 'huge'] }], // custom dropdown
-                [{ header: [1, 2, 3, 4, 5, 6, false] }],
-
-                [{ color: [] }, { background: [] }], // dropdown with defaults from theme
-                [{ font: [] }],
-                [{ align: [] }],
-
-                ['clean'], // remove formatting button
-              ],
+              cursors: { transformOnTextChange: true },
+              toolbar: TOOLBARS[cfg.toolbar] || TOOLBARS.full,
             },
             theme: 'snow',
-            placeholder: 'Start collaborating...',
+            readOnly,
+            placeholder:
+              cfg.placeholder ||
+              (readOnly
+                ? 'Nothing here yet.'
+                : sync
+                  ? 'Start collaborating...'
+                  : 'Start writing...'),
           })
 
-          const cursors = editor.getModule('cursors')
+          // Read-only users never use the toolbar: hide it rather than show dead buttons
+          if (readOnly) editor.getModule('toolbar').container.hidden = true
+          showSyncBadge(editor, sync)
 
-          // Generate stable user information
-          const userId = Math.floor(Math.random() * 10000).toString()
-          const userColor = `#${Math.floor(Math.random() * 16777215).toString(
-            16
-          )}`
-          const userName = `User-${userId}`
+          if (sync) bindShared(editor, STATE_KEY, joinCursors(STATE_KEY))
+          else bindLocal(editor, STATE_KEY)
 
-          // Set up awareness after editor is initialized
-          /*  awareness.setLocalStateField('user', {
-            name: userName,
-            color: userColor,
-            id: userId,
-          })  */
-
-          // getState creates the Y.Text when the key is missing. Peers that do this
-          // at the same moment each create one and Yjs keeps only one, so rebind
-          // whenever the key's value is replaced, or this peer edits a dropped text.
-          let ytext = Edrys.getState(STATE_KEY, 'Text')
-          let binding = new QuillBinding(ytext, editor)
-          window.ytext = ytext
-
-          Edrys.getState().observe((event) => {
-            if (!event.keysChanged.has(STATE_KEY)) return
-            const current = Edrys.getState(STATE_KEY, 'Text')
-            if (current === ytext) return
-            binding.destroy()
-            ytext = current
-            binding = new QuillBinding(ytext, editor)
-            window.ytext = ytext
-          })
-
-          // Handle selection changes after binding is created
-          /*  editor.on('selection-change', (range) => {
-            if (range) {
-              awareness.setLocalStateField('cursor', {
-                index: range.index,
-                length: range.length,
-              })
-            }
-          })  */
-
-          // Handle awareness changes
-          /*  awareness.on('change', () => {
-            const states = Array.from(awareness.getStates().entries())
-            states.forEach(([clientId, state]) => {
-              if (
-                state.user &&
-                state.cursor &&
-                clientId !== awareness.clientID
-              ) {
-                try {
-                  // Ensure cursor exists
-                  if (!cursors.cursors[clientId]) {
-                    cursors.createCursor(
-                      clientId.toString(),
-                      state.user.name,
-                      state.user.color
-                    )
-                  }
-
-                  // Move cursor safely
-                  if (state.cursor.index !== undefined) {
-                    cursors.moveCursor(clientId.toString(), {
-                      index: state.cursor.index,
-                      length: state.cursor.length || 0,
-                    })
-                  }
-                } catch (err) {
-                  console.warn('Cursor update error:', err)
-                }
-              }
-            })
-          })  */
-
-          // Debug logging; window.editor and window.ytext are used by the e2e tests (edrys-module-tests)
+          // used by the e2e tests (edrys-module-tests), with window.ytext in shared mode
           window.editor = editor
-          window.cursors = cursors
-          //window.awareness = awareness
 
           status.hidden = true
         } catch (error) {
