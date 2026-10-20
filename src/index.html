@@ -117,6 +117,12 @@
         border-bottom: 1px solid var(--border);
         font-family: inherit;
         color: var(--text-main);
+        /* a shade off the editor, as module-monaco-editor's bar in light mode */
+        background: var(--background-alt);
+      }
+      /* room for a peer's name flag above the first line (it sits above its caret) */
+      .ql-editor {
+        padding-top: 1.5rem;
       }
       .ql-container.ql-snow {
         border: 0;
@@ -564,6 +570,60 @@
         window.addEventListener('pagehide', save)
       }
 
+      const SHORTCUT = /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘' : 'Ctrl+'
+
+      // Hover text (and screen-reader label) per toolbar control: Quill only sets
+      // terse aria-labels such as "list: ordered". Keys: format, or format:value.
+      const TOOL_LABELS = {
+        bold: `Bold (${SHORTCUT}B)`,
+        italic: `Italic (${SHORTCUT}I)`,
+        underline: `Underline (${SHORTCUT}U)`,
+        strike: 'Strikethrough',
+        blockquote: 'Quote',
+        'code-block': 'Code block',
+        link: `Link (${SHORTCUT}K)`,
+        image: 'Image',
+        video: 'Video (YouTube or Vimeo)',
+        formula: 'Formula (LaTeX)',
+        'header:1': 'Heading 1',
+        'header:2': 'Heading 2',
+        'list:ordered': 'Numbered list',
+        'list:bullet': 'Bulleted list',
+        'list:check': 'Checklist',
+        'script:sub': 'Subscript',
+        'script:super': 'Superscript',
+        'indent:-1': 'Decrease indent',
+        'indent:+1': 'Increase indent',
+        'direction:rtl': 'Right-to-left text',
+        clean: 'Clear formatting',
+        size: 'Text size',
+        header: 'Heading',
+        color: 'Text colour',
+        background: 'Highlight colour',
+        font: 'Font',
+        align: 'Alignment',
+      }
+
+      function labelToolbar(editor) {
+        const toolbar = editor.getModule('toolbar').container
+        const formatOf = (el) =>
+          [...el.classList].find((c) => c.startsWith('ql-') && c !== 'ql-picker')?.slice(3)
+        const label = (el, text) => {
+          if (!text) return
+          el.title = text
+          el.setAttribute('aria-label', text)
+        }
+        for (const button of toolbar.querySelectorAll('button')) {
+          const format = formatOf(button)
+          const value = button.value
+          label(button, TOOL_LABELS[value ? `${format}:${value}` : format] || TOOL_LABELS[format])
+        }
+        // pickers (size, heading, colours, font, alignment): label their opener
+        for (const picker of toolbar.querySelectorAll('.ql-picker')) {
+          label(picker.querySelector('.ql-picker-label'), TOOL_LABELS[formatOf(picker)])
+        }
+      }
+
       /** "shared" / "local only" at the end of the toolbar. */
       function showSyncBadge(editor, sync) {
         const group = document.createElement('span')
@@ -621,6 +681,7 @@
 
           // Read-only users never use the toolbar: hide it rather than show dead buttons
           if (readOnly) editor.getModule('toolbar').container.hidden = true
+          labelToolbar(editor)
           showSyncBadge(editor, sync)
 
           if (sync) bindShared(editor, STATE_KEY, joinCursors(STATE_KEY))
