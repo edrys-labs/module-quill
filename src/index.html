@@ -220,6 +220,14 @@
       }
 
 
+      /* Keep the peer's name next to its caret, as module-monaco-editor does
+         (quill-cursors only shows it for a moment after a move, or on hover) */
+      .ql-cursor .ql-cursor-flag {
+        opacity: 1 !important;
+        visibility: visible !important;
+        font-size: small;
+      }
+
       /* Sync badge at the end of the toolbar */
       .ql-toolbar.ql-snow {
         display: flex;
