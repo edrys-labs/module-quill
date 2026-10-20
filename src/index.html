@@ -23,23 +23,176 @@
 
     <script src="https://edrys-labs.github.io/module/edrys.js"></script>
     <link
+      rel="stylesheet"
+      href="https://edrys-labs.github.io/module/vendor/water.min.css"
+    />
+    <link
       href="https://cdn.jsdelivr.net/npm/quill@2.0.0/dist/quill.snow.css"
       rel="stylesheet"
     />
+    <!-- linked here, not imported in the inline script: Parcel drops CSS imported there -->
+    <link rel="stylesheet" href="../node_modules/katex/dist/katex.min.css" />
     <style>
+      /* Layout: status, toolbar and editor fill the frame; the editor takes
+         whatever the (wrapping) toolbar leaves and scrolls inside itself. */
       html,
       body {
-        height: 100vh;
+        height: 100%;
         margin: 0;
+      }
+      body {
+        max-width: none;
         padding: 0;
+        display: flex;
+        flex-direction: column;
         overflow: hidden;
       }
-      #editor-container {
-        height: calc(100vh - 2.9rem);
-        margin: 0.1rem;
-        border: 0px;
-        position: relative;
+      .ql-toolbar {
+        flex: none;
       }
+      #editor-container {
+        flex: 1;
+        min-height: 0;
+      }
+
+      #status {
+        margin: 1rem;
+        opacity: 0.7;
+      }
+      #status.error {
+        opacity: 1;
+        padding-left: 0.75rem;
+        border-left: 4px solid #b8384a;
+      }
+
+      /* Dark mode matches module-monaco-editor (vs-dark) instead of water.css's
+         navy; everything below reads these tokens. */
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background-body: #1e1e1e;
+          --background: #2d2d2d;
+          --background-alt: #252526;
+          --border: #333;
+          --text-main: #d4d4d4;
+          --text-bright: #fff;
+          --text-muted: #888;
+          --form-text: #ccc;
+          --button-base: #3a3a3a;
+          --button-hover: #4a4a4a;
+          --scrollbar-thumb: #4a4a4a;
+          --scrollbar-thumb-hover: #5a5a5a;
+        }
+      }
+
+      /* Quill's snow theme hard-codes light colours: map them to water.css
+         tokens, which follow the light/dark preference. */
+      .ql-toolbar.ql-snow {
+        border: 0;
+        border-bottom: 1px solid var(--border);
+        font-family: inherit;
+        color: var(--text-main);
+      }
+      .ql-container.ql-snow {
+        border: 0;
+      }
+      .ql-snow.ql-toolbar button {
+        margin: 0; /* water.css spaces buttons apart */
+      }
+      .ql-snow.ql-toolbar button:active {
+        transform: none;
+      }
+      .ql-snow.ql-toolbar button:focus:not(:focus-visible) {
+        box-shadow: none;
+      }
+      .ql-snow .ql-stroke,
+      .ql-snow .ql-stroke-miter {
+        stroke: currentColor;
+      }
+      .ql-snow .ql-fill,
+      .ql-snow .ql-stroke.ql-fill {
+        fill: currentColor;
+      }
+      .ql-snow .ql-picker {
+        color: inherit;
+      }
+      .ql-snow.ql-toolbar
+        :is(
+          button:hover,
+          button:focus,
+          button.ql-active,
+          .ql-picker-label:hover,
+          .ql-picker-label.ql-active,
+          .ql-picker-item:hover,
+          .ql-picker-item.ql-selected
+        ) {
+        color: var(--links);
+      }
+      .ql-snow.ql-toolbar
+        :is(
+          button:hover,
+          button:focus,
+          button.ql-active,
+          .ql-picker-label:hover,
+          .ql-picker-label.ql-active,
+          .ql-picker-item:hover,
+          .ql-picker-item.ql-selected
+        )
+        :is(.ql-stroke, .ql-stroke-miter) {
+        stroke: var(--links);
+      }
+      .ql-snow.ql-toolbar
+        :is(
+          button:hover,
+          button:focus,
+          button.ql-active,
+          .ql-picker-label:hover,
+          .ql-picker-label.ql-active,
+          .ql-picker-item:hover,
+          .ql-picker-item.ql-selected
+        )
+        .ql-fill {
+        fill: var(--links);
+      }
+      .ql-snow .ql-picker.ql-expanded .ql-picker-label {
+        color: var(--text-muted);
+      }
+      .ql-snow .ql-picker-options {
+        background-color: var(--background-body);
+      }
+      .ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-label,
+      .ql-toolbar.ql-snow .ql-picker.ql-expanded .ql-picker-options {
+        border-color: var(--border);
+      }
+      .ql-snow .ql-tooltip {
+        background-color: var(--background-body);
+        border-color: var(--border);
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        color: var(--text-main);
+      }
+      .ql-snow .ql-tooltip input[type='text'] {
+        border-color: var(--border);
+      }
+      .ql-snow .ql-tooltip a.ql-action::after {
+        border-color: var(--border);
+      }
+      .ql-snow a {
+        color: var(--links);
+      }
+      .ql-editor.ql-blank::before,
+      .ql-editor li[data-list] > .ql-ui {
+        color: var(--text-muted);
+      }
+      .ql-snow .ql-editor code {
+        background-color: var(--background);
+      }
+      .ql-snow .ql-editor blockquote {
+        border-left-color: var(--border);
+        font-style: normal; /* water.css italicises blockquotes, Quill does not */
+      }
+      .ql-editor td {
+        border-color: var(--border);
+      }
+
       .ql-cursor.ql-hidden {
         display: block !important;
         opacity: 1 !important;
@@ -67,13 +220,13 @@
     </style>
   </head>
   <body>
+    <p id="status" role="status">Loading editor…</p>
     <div id="editor-container"></div>
     <script type="module">
       import Quill from 'quill'
       import QuillCursors from 'quill-cursors'
       import { QuillBinding } from 'y-quill'
       import katex from 'katex'
-      import 'katex/dist/katex.min.css'
 
       // Quill's formula format looks KaTeX up on window
       window.katex = katex
@@ -102,10 +255,29 @@
       const stateKey = (cfg) =>
         cfg.editorId ? `quill-text-${cfg.editorId}` : 'quill-text'
 
+      const status = document.getElementById('status')
+
+      function showError(error) {
+        console.error('Editor initialization error:', error)
+        status.classList.add('error')
+        status.setAttribute('role', 'alert')
+        status.textContent =
+          `Could not start the editor: ${error?.message || error}. ` +
+          'Reload the page; if this keeps happening, check the module URL in the class settings.'
+        status.hidden = false
+      }
+
       async function initializeEditor() {
+        // onReady only fires inside an Edrys classroom
+        const slow = setTimeout(() => {
+          status.textContent =
+            'Still waiting for the classroom to connect… This editor only works inside Edrys.'
+        }, 10_000)
+
         try {
           // Wait for Edrys to be ready
           await new Promise((resolve) => Edrys.onReady(resolve))
+          clearTimeout(slow)
 
           const cfg = readConfig()
           const STATE_KEY = stateKey(cfg)
@@ -227,8 +399,11 @@
           window.editor = editor
           window.cursors = cursors
           //window.awareness = awareness
+
+          status.hidden = true
         } catch (error) {
-          console.error('Editor initialization error:', error)
+          clearTimeout(slow)
+          showError(error)
         }
       }
 
