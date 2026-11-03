@@ -28,36 +28,17 @@ body {
 #status.notice {
   opacity: 1;
   padding-left: 0.75rem;
-  border-left: 4px solid #b8384a;
-}
-
-/* Dark mode matches module-monaco-editor (vs-dark) instead of water.css's
-   navy; everything below reads these tokens. */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background-body: #1e1e1e;
-    --background: #2d2d2d;
-    --background-alt: #252526;
-    --border: #333;
-    --text-main: #d4d4d4;
-    --text-bright: #fff;
-    --text-muted: #888;
-    --form-text: #ccc;
-    --button-base: #3a3a3a;
-    --button-hover: #4a4a4a;
-    --scrollbar-thumb: #4a4a4a;
-    --scrollbar-thumb-hover: #5a5a5a;
-  }
+  border-left: 4px solid var(--edrys-error);
 }
 
 /* Quill's snow theme hard-codes light colours: map them to water.css
-   tokens, which follow the light/dark preference. */
+   tokens, which edrys-module.css sets for the classroom's theme. */
 .ql-toolbar.ql-snow {
   border: 0;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--edrys-line);
   font-family: inherit;
   color: var(--text-main);
-  /* a shade off the editor, as module-monaco-editor's bar in light mode */
+  /* a shade off the editor */
   background: var(--background-alt);
 }
 /* room for a peer's name flag above the first line (it sits above its caret) */
@@ -66,6 +47,10 @@ body {
 }
 .ql-container.ql-snow {
   border: 0;
+  font: 400 14px/1.6 var(--edrys-font);
+}
+.ql-snow .ql-editor :is(code, pre.ql-syntax, .ql-code-block-container) {
+  font-family: var(--edrys-mono);
 }
 .ql-snow.ql-toolbar button {
   margin: 0; /* water.css spaces buttons apart */
@@ -165,7 +150,6 @@ body {
   border-color: var(--border);
 }
 
-
 /* Keep the peer's name next to its caret, as module-monaco-editor does
    (quill-cursors only shows it for a moment after a move, or on hover) */
 .ql-cursor .ql-cursor-flag {
@@ -186,18 +170,4 @@ body {
 .ql-toolbar.ql-snow .ql-formats.sync {
   margin-left: auto;
   margin-right: 0;
-}
-.badge {
-  border-radius: 999px;
-  padding: 0.1rem 0.6rem;
-  font-size: small;
-  line-height: 1.4;
-  color: #fff;
-  white-space: nowrap;
-}
-.badge.on {
-  background: #1f7a45;
-}
-.badge.wait {
-  background: #6b6b6b;
 }

@@ -4,7 +4,7 @@ A collaborative rich-text editor module for [Edrys-Lite](https://github.com/edry
 built on [Quill](https://quilljs.com/) with real-time CRDT sync and live cursors. It supports headings, lists,
 checklists, links, images, YouTube/Vimeo videos and formulas ([KaTeX](https://katex.org/)).
 
-![screenshot](screenshot.jpg)
+![The editor with a heading, a formula, a quote and a checklist; the toolbar shows that the document is shared](screenshot.png)
 
 ## Usage
 
@@ -14,7 +14,7 @@ Add this URL to your Edrys-Lite classroom:
 https://edrys-labs.github.io/module-quill/
 ```
 
-The module is shown in every room (`show-in: *`). It follows each device's light or dark preference.
+The module is shown in every room (`show-in: *`). It follows the classroom's light or dark theme (the operating system's when opened on its own).
 
 ## Configuration
 

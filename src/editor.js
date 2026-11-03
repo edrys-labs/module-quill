@@ -360,7 +360,7 @@ function showSyncBadge(editor, sync) {
   const group = document.createElement('span')
   group.className = 'ql-formats sync'
   const badge = document.createElement('span')
-  badge.className = `badge ${sync ? 'on' : 'wait'}`
+  badge.className = sync ? 'edrys-pill ok' : 'edrys-pill'
   badge.textContent = sync ? 'shared' : 'local only'
   badge.title = sync
     ? 'Shared: everyone in this room edits this document'
