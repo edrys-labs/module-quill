@@ -234,13 +234,28 @@ function shortPeerName(rawName) {
  * Live cursors of the others in the room. y-quill draws them with
  * quill-cursors from each peer's awareness `user` and `cursor` fields.
  */
-function joinCursors(key) {
+function joinCursors(editor, key) {
   try {
     const awareness = Edrys.getState(`${key}-cursors`, 'Awareness')
-    const name = shortPeerName(Edrys.username || 'anon')
-    awareness.setLocalStateField('user', {
-      name,
-      color: `hsl(${stringToHue(name)}, 70%, 45%)`,
+    const short = shortPeerName(Edrys.username || 'anon')
+    let published
+    const publishUser = () => {
+      const name = Edrys.liveUser?.username || Edrys.liveUser?.displayName || short
+      if (name === published) return
+      published = name
+      // The colour comes from the ID, so a rename doesn't change it
+      awareness.setLocalStateField('user', { name, color: `hsl(${stringToHue(short)}, 70%, 45%)` })
+    }
+    publishUser()
+    Edrys.onUpdate(publishUser)
+    // y-quill never updates the name of a cursor it has drawn. Registered before
+    // the binding's listener, which draws the removed cursor again with the new name.
+    const cursors = editor.getModule('cursors')
+    awareness.on('change', () => {
+      for (const cursor of cursors.cursors()) {
+        const name = awareness.getStates().get(Number(cursor.id))?.user?.name
+        if (name && name !== cursor.name) cursors.removeCursor(cursor.id)
+      }
     })
     // edrys.js keeps awareness state after the page is gone: drop our cursor
     window.addEventListener('pagehide', () =>
@@ -418,7 +433,7 @@ async function initializeEditor() {
     labelToolbar(editor)
     showSyncBadge(editor, sync)
 
-    if (sync) bindShared(editor, STATE_KEY, joinCursors(STATE_KEY))
+    if (sync) bindShared(editor, STATE_KEY, joinCursors(editor, STATE_KEY))
     else bindLocal(editor, STATE_KEY)
 
     // used by the e2e tests (edrys-module-tests), with window.ytext in shared mode
